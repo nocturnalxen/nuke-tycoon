@@ -83,6 +83,21 @@ lp.CharacterAdded:Connect(function(newChar)
     hrp = newChar:WaitForChild("HumanoidRootPart")
 end)
 
+-- =====================
+-- SHARED TELEPORT SPEED
+-- =====================
+local TP_SPEED = 300 -- studs per second
+
+local function lerpTo(targetCFrame)
+    local startCF = lp.Character:GetPivot()
+    local dist = (startCF.Position - targetCFrame.Position).Magnitude
+    local steps = math.max(math.ceil(dist / TP_SPEED * 60), 1)
+    for i = 1, steps do
+        lp.Character:PivotTo(startCF:Lerp(targetCFrame, i / steps))
+        task.wait()
+    end
+end
+
 -- ANTI AFK
 task.spawn(function()
     local vu = game:GetService("VirtualUser")
@@ -141,14 +156,15 @@ local function notify(title, text)
         Duration = 3
     })
 end
+
 task.spawn(function()
     local ogCFrame = lp.Character:GetPivot()
     local middleCFrame = CFrame.new(-816.998291, 348.65094, 334.041504, 0.118985146, -7.769992e-9, -0.99289602, -2.8016989e-14, 1, -7.825587e-9, 0.99289602, 9.311565e-10, 0.118985146)
 
-    lp.Character:PivotTo(middleCFrame)
+    lerpTo(middleCFrame)
     notify("Us Scripts", "Loading all bases...")
     task.wait(3)
-    lp.Character:PivotTo(ogCFrame)
+    lerpTo(ogCFrame)
 end)
 
 while not currentTycoon do
@@ -169,19 +185,17 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
 Name = "Nuke Tycoon | Us Scripts",
-Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+Icon = 0,
 LoadingTitle = "Nuke Tycoon | Us Scripts",
 LoadingSubtitle = "made by us.",
-ShowText = "Rayfield", -- for mobile users to unhide Rayfield, change if you'd like
-Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
-
-ToggleUIKeybind = "K", -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
-
+ShowText = "Rayfield",
+Theme = "Default",
+ToggleUIKeybind = "K",
 DisableRayfieldPrompts = false,
-DisableBuildWarnings = false -- Prevents Rayfield from emitting warnings when the script has a version mismatch with the interface.
+DisableBuildWarnings = false
 })
 
-local Tab = Window:CreateTab("Main", 4483362458) -- Title, Image
+local Tab = Window:CreateTab("Main", 4483362458)
 
 local Section = Tab:CreateSection("Tycoon")
 Section:Set("Tycoon")
@@ -258,7 +272,6 @@ Tab:CreateToggle({
 
                     task.wait(3)
 
-                    -- refresh tycoon after rebirth
                     repeat task.wait(1) until currentTycoon and currentTycoon:FindFirstChild("Buttons")
                 end
                 task.wait(1)
@@ -277,18 +290,7 @@ Tab:CreateToggle({
 
         task.spawn(function()
             while cashEnabled do
-                local startPos = char:GetPivot().Position
-                local goalPos = giver.Position
-
-                local distance = (startPos - goalPos).Magnitude
-                local steps = math.clamp(distance / 2, 10, 100)
-
-                for i = 1, steps do
-                    if not cashEnabled then break end
-                    local pos = startPos:Lerp(goalPos, i / steps)
-                    char:PivotTo(CFrame.new(pos))
-                    task.wait()
-                end
+                lerpTo(giver.CFrame)
 
                 if not cashEnabled then break end
 
@@ -300,7 +302,6 @@ Tab:CreateToggle({
         end)
     end,
 })
-
 
 -- UI
 local Divider = Tab:CreateDivider()
@@ -319,7 +320,6 @@ local Toggle = Tab:CreateToggle({
 
         task.spawn(function()
             while gemsEnabled do
-                -- Pause gems if cash is running
                 if cashEnabled then
                     task.wait(1)
                     continue
@@ -347,30 +347,44 @@ local Toggle = Tab:CreateToggle({
 
                 local originalCFrame = lp.Character:GetPivot()
 
-                lp.Character:PivotTo(prompt.Parent.CFrame)
+                lerpTo(prompt.Parent.CFrame)
                 task.wait(0.5)
 
                 fireproximityprompt(prompt)
 
-                 while prompt.Parent:FindFirstChild("Chosen") 
+                while prompt.Parent:FindFirstChild("Chosen") 
                 and prompt.Parent.Chosen.Value == true do
                     if not gemsEnabled then break end
                     task.wait()
                 end
 
-                lp.Character:PivotTo(originalCFrame)
+                lerpTo(originalCFrame)
                 task.wait(1)
             end
         end)
     end,
 })
 
+local Label = Tab:CreateLabel("Turn off cash collector to use auto gems", 4483362458, Color3.fromRGB(255, 255, 255), false)
 
-local Label = Tab:CreateLabel("Turn off cash collector to use auto gems", 4483362458, Color3.fromRGB(255, 255, 255), false) -- Title, Icon, Color, IgnoreTheme
-
-local Tab1 = Window:CreateTab("Movement", 4483362458) -- Title, Image
+local Tab1 = Window:CreateTab("Movement", 4483362458)
 local Section = Tab1:CreateSection("Movement")
 Section:Set("Movement")
+
+-- TP SPEED INPUT
+Tab1:CreateInput({
+    Name = "Teleport Speed (studs/s)",
+    CurrentValue = "",
+    PlaceholderText = "Default: 100",
+    RemoveTextAfterFocusLost = false,
+    Flag = "InputTpSpeed",
+    Callback = function(Text)
+        local val = tonumber(Text)
+        if val and val > 0 then
+            TP_SPEED = val
+        end
+    end,
+})
 
 Tab1:CreateInput({
     Name = "Walk Speed",
@@ -401,6 +415,7 @@ Tab1:CreateInput({
         end
     end,
 })
+
 local noclipEnabled = false
 
 Tab1:CreateToggle({
@@ -422,7 +437,6 @@ Tab1:CreateToggle({
         end)
     end,
 })
-
 
 Tab1:CreateToggle({
     Name = "Fly",
@@ -457,7 +471,7 @@ Section:Set("Misc")
 
 local Toggle = Tab3:CreateToggle({
     Name = "No Fall Damage",
-    CurrentValue = false,
+    CurrentValue = true,
     Flag = "Toggle_BlockDamage",
     Callback = function(Value)
         if Value then
@@ -471,7 +485,6 @@ local Toggle = Tab3:CreateToggle({
             end)
             setreadonly(mt, true)
         else
-            -- Restore it
             setreadonly(mt, false)
             mt.__namecall = oldNamecall
             setreadonly(mt, true)
@@ -486,9 +499,12 @@ local Button = Tab3:CreateButton({
         local ogCFrame = lp.Character:GetPivot()
         local middleCFrame = CFrame.new(-816.998291, 348.65094, 334.041504, 0.118985146, -7.769992e-9, -0.99289602, -2.8016989e-14, 1, -7.825587e-9, 0.99289602, 9.311565e-10, 0.118985146)
 
-        lp.Character:PivotTo(middleCFrame)
+        lerpTo(middleCFrame)
         task.wait(0.5)
-        lp.Character:PivotTo(ogCFrame)
+        lerpTo(ogCFrame)
    end,
 })
-local Label = Tab3:CreateLabel("Turn off cash collector to use claim volcano", 4483362458, Color3.fromRGB(255, 255, 255), false) -- Title, Icon, Color, IgnoreTheme
+
+local Label = Tab3:CreateLabel("Turn off cash collector to use claim volcano", 4483362458, Color3.fromRGB(255, 255, 255), false)
+local Label = Tab3:CreateLabel("Teleporting doesn't work without no fall damage", 4483362458, Color3.fromRGB(255, 255, 255), false)
+local Label = Tab3:CreateLabel("No fall damage blocks your guns from doing damage", 4483362458, Color3.fromRGB(255, 255, 255), false)
