@@ -83,6 +83,16 @@ lp.CharacterAdded:Connect(function(newChar)
     hrp = newChar:WaitForChild("HumanoidRootPart")
 end)
 
+-- ANTI AFK
+task.spawn(function()
+    local vu = game:GetService("VirtualUser")
+    game.Players.LocalPlayer.Idled:Connect(function()
+        vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end)
+end)
+
 local flying = false
 local flyConnection = nil
 local bodyVelocity = nil
@@ -176,122 +186,185 @@ local Tab = Window:CreateTab("Main", 4483362458) -- Title, Image
 local Section = Tab:CreateSection("Tycoon")
 Section:Set("Tycoon")
 
-local Toggle = Tab:CreateToggle({
-Name = "Auto Buy Buttons",
-CurrentValue = false,
-Flag = "Toggle1", -- A flag is the identifier for the configuration file; make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-Callback = function(Value)
+-- AUTO BUY BUTTONS
+Tab:CreateToggle({
+    Name = "Auto Buy Buttons",
+    CurrentValue = false,
+    Flag = "ToggleBuy",
+    Callback = function(Value)
         buyEnabled = Value
-    while buyEnabled do
-            local buttons = {}
-            for _, button in pairs(currentTycoon.Buttons:GetChildren()) do
-                if button.ACS_NoDamage.UI.Enabled == true and lp.leaderstats.Rebirths.Value >= button.Rebirths.Value then
-                    table.insert(buttons, button)
+
+        task.spawn(function()
+            while buyEnabled do
+                if not currentTycoon or not currentTycoon:FindFirstChild("Buttons") then
+                    task.wait(1)
+                    continue
                 end
-            end
 
-            if #buttons == 0 then
-                notify("Us Scripts", "Tycoon complete!")
-                buyEnabled = false
-                break
-            end
+                local buttons = {}
 
-        table.sort(buttons, function(a, b)
-            local aUranium = a.Name:lower():find("uranium") ~= nil
-            local bUranium = b.Name:lower():find("uranium") ~= nil
-            if aUranium ~= bUranium then
-                return aUranium  -- ← changed this
+                for _, button in pairs(currentTycoon.Buttons:GetChildren()) do
+                    if button:FindFirstChild("ACS_NoDamage")
+                    and button:FindFirstChild("Price")
+                    and button:FindFirstChild("Rebirths")
+                    and button.ACS_NoDamage:FindFirstChild("UI")
+                    and button.ACS_NoDamage.UI.Enabled == true
+                    and lp.leaderstats.Rebirths.Value >= button.Rebirths.Value then
+                        table.insert(buttons, button)
+                    end
+                end
+
+                if #buttons == 0 then
+                    task.wait(1)
+                    continue
+                end
+
+                table.sort(buttons, function(a, b)
+                    local aU = a.Name:lower():find("uranium")
+                    local bU = b.Name:lower():find("uranium")
+                    if aU ~= bU then
+                        return aU ~= nil
+                    end
+                    return a.Price.Value < b.Price.Value
+                end)
+
+                for _, button in ipairs(buttons) do
+                    if not buyEnabled then break end
+                    firetouchinterest(button.ACS_NoDamage, hrp, 0)
+                    task.wait()
+                    firetouchinterest(button.ACS_NoDamage, hrp, 1)
+                end
+
+                task.wait(0.5)
             end
-            return a.Price.Value < b.Price.Value
         end)
+    end,
+})
 
-            for _, button in ipairs(buttons) do
-                firetouchinterest(button.ACS_NoDamage, hrp, 0)
-                task.wait()
-                firetouchinterest(button.ACS_NoDamage, hrp, 1)
+-- AUTO REBIRTH
+Tab:CreateToggle({
+    Name = "Auto Rebirth",
+    CurrentValue = false,
+    Flag = "ToggleRebirth",
+    Callback = function(Value)
+        rebirthEnabled = Value
+
+        task.spawn(function()
+            while rebirthEnabled do
+                if lp:FindFirstChild("CanRebirth") and lp.CanRebirth.Value == true then
+                    game:GetService("ReplicatedStorage")
+                        :WaitForChild("RebirthEvent (Don't Move)")
+                        :FireServer()
+
+                    task.wait(3)
+
+                    -- refresh tycoon after rebirth
+                    repeat task.wait(1) until currentTycoon and currentTycoon:FindFirstChild("Buttons")
+                end
+                task.wait(1)
             end
-
-            task.wait(1)
-        end
-end,
+        end)
+    end,
 })
 
-local Toggle = Tab:CreateToggle({
-Name = "Auto Rebirth",
-CurrentValue = false,
-Flag = "Toggle1", -- A flag is the identifier for the configuration file; make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-Callback = function(Value)
-    rebirthEnabled = Value
-    while rebirthEnabled and lp.CanRebirth do
-        game:GetService("ReplicatedStorage"):WaitForChild("RebirthEvent (Don't Move)"):FireServer()
-        task.wait(1)
-    end
-end,
-})
-
-local Toggle = Tab:CreateToggle({
-Name = "Auto Claim Cash",
-CurrentValue = false,
-Flag = "Toggle2", -- A flag is the identifier for the configuration file; make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-Callback = function(Value)
+-- AUTO CASH
+Tab:CreateToggle({
+    Name = "Auto Claim Cash",
+    CurrentValue = false,
+    Flag = "ToggleCash",
+    Callback = function(Value)
         cashEnabled = Value
-    while cashEnabled do
-        local distance = (char:GetPivot().Position - giver.Position).Magnitude
-        local time = distance / 50
-        local steps = time / 0.01
-        local startPos = char:GetPivot().Position
-        local goalPos = giver.Position
 
-        for i = 1, steps do
-            local newPos = startPos:Lerp(goalPos, i / steps)
-            char:PivotTo(CFrame.new(newPos))
-            task.wait()
-        end
+        task.spawn(function()
+            while cashEnabled do
+                local startPos = char:GetPivot().Position
+                local goalPos = giver.Position
 
-        firetouchinterest(giver, hrp, 0)
-        firetouchinterest(giver, hrp, 1)
-        task.wait(0.5)
-    end
-end,
+                local distance = (startPos - goalPos).Magnitude
+                local steps = math.clamp(distance / 2, 10, 100)
+
+                for i = 1, steps do
+                    if not cashEnabled then break end
+                    local pos = startPos:Lerp(goalPos, i / steps)
+                    char:PivotTo(CFrame.new(pos))
+                    task.wait()
+                end
+
+                if not cashEnabled then break end
+
+                firetouchinterest(giver, hrp, 0)
+                firetouchinterest(giver, hrp, 1)
+
+                task.wait(0.5)
+            end
+        end)
+    end,
 })
+
+
+-- UI
 local Divider = Tab:CreateDivider()
-Divider:Set(true) -- Whether the divider's visibility is to be set to true or false.
+Divider:Set(true)
 
 local Section = Tab:CreateSection("Gems")
 Section:Set("Gems")
 
+-- GEMS TOGGLE
 local Toggle = Tab:CreateToggle({
-Name = "Auto Rob Gems",
-CurrentValue = false,
-Flag = "Toggle3", -- A flag is the identifier for the configuration file; make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-Callback = function(Value)
-    gemsEnabled = Value
-    while gemsEnabled and not cashEnabled do
-        local prompt = nil
+    Name = "Auto Rob Gems",
+    CurrentValue = false,
+    Flag = "Toggle3",
+    Callback = function(Value)
+        gemsEnabled = Value
 
-        for _, base in pairs(gemsFolder:GetChildren()) do
-            if base:IsA("BasePart") and base.Chosen.Value == true and base.Name ~= lp.Team.Name then
-                if base.ProximityPrompt then
-                    prompt = base.ProximityPrompt
-                    break
+        task.spawn(function()
+            while gemsEnabled do
+                -- Pause gems if cash is running
+                if cashEnabled then
+                    task.wait(1)
+                    continue
                 end
+
+                local prompt = nil
+
+                for _, base in pairs(gemsFolder:GetChildren()) do
+                    if base:IsA("BasePart")
+                    and base:FindFirstChild("Chosen")
+                    and base.Chosen.Value == true
+                    and base.Name ~= lp.Team.Name then
+                        
+                        if base:FindFirstChild("ProximityPrompt") then
+                            prompt = base.ProximityPrompt
+                            break
+                        end
+                    end
+                end
+
+                if not prompt then
+                    task.wait(1)
+                    continue
+                end
+
+                local originalCFrame = lp.Character:GetPivot()
+
+                lp.Character:PivotTo(prompt.Parent.CFrame)
+                task.wait(0.5)
+
+                fireproximityprompt(prompt)
+
+                 while prompt.Parent:FindFirstChild("Chosen") 
+                and prompt.Parent.Chosen.Value == true do
+                    if not gemsEnabled then break end
+                    task.wait()
+                end
+
+                lp.Character:PivotTo(originalCFrame)
+                task.wait(1)
             end
-        end
-
-        if not prompt then task.wait(1) continue end
-
-        local originalCFrame = lp.Character:GetPivot()
-        lp.Character:PivotTo(prompt.Parent.CFrame)
-        task.wait(0.5)
-        fireproximityprompt(prompt)
-
-        while prompt.Parent.Chosen.Value == true do task.wait() end
-        lp.Character:PivotTo(originalCFrame)
-        task.wait(1)
-
-    end
-end,
+        end)
+    end,
 })
+
 
 local Label = Tab:CreateLabel("Turn off cash collector to use auto gems", 4483362458, Color3.fromRGB(255, 255, 255), false) -- Title, Icon, Color, IgnoreTheme
 
@@ -333,18 +406,20 @@ local noclipEnabled = false
 Tab1:CreateToggle({
     Name = "No Clip",
     CurrentValue = false,
-    Flag = "ToggleNoCLip",
+    Flag = "ToggleNoClip",
     Callback = function(Value)
         noclipEnabled = Value
 
-        while noclipEnabled and game.Players.LocalPlayer.Character do
-            for _, v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
-                if v:IsA("BasePart") then
-                    v.CanCollide = false
+        task.spawn(function()
+            while noclipEnabled do
+                for _, v in pairs(char:GetDescendants()) do
+                    if v:IsA("BasePart") then
+                        v.CanCollide = false
+                    end
                 end
+                task.wait(0.05)
             end
-            task.wait(0.05)
-        end
+        end)
     end,
 })
 
