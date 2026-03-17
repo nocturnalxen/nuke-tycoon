@@ -375,7 +375,7 @@ Section:Set("Movement")
 Tab1:CreateInput({
     Name = "Teleport Speed (studs/s)",
     CurrentValue = "",
-    PlaceholderText = "Default: 100",
+    PlaceholderText = "Default: 300",
     RemoveTextAfterFocusLost = false,
     Flag = "InputTpSpeed",
     Callback = function(Text)
