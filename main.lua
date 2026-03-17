@@ -348,15 +348,15 @@ local Toggle = Tab:CreateToggle({
                 local originalCFrame = lp.Character:GetPivot()
 
                 lp.Character:PivotTo(prompt.Parent.CFrame)
-                task.wait(0.5)
+                task.wait(2)
 
                 fireproximityprompt(prompt)
 
-                 while prompt.Parent:FindFirstChild("Chosen") 
-                and prompt.Parent.Chosen.Value == true do
+                while prompt.Parent:FindFirstChild("Chosen") and prompt.Parent.Chosen.Value == true do
                     if not gemsEnabled then break end
                     task.wait()
                 end
+                task.wait(1) -- anti cheat
 
                 lp.Character:PivotTo(originalCFrame)
                 task.wait(1)
