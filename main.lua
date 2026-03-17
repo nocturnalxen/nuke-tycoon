@@ -298,6 +298,12 @@ Tab:CreateToggle({
                 task.wait(0.5)
             end
         end)
+        cashEnabled = false
+
+        repeat task.wait() until not cashEnabled
+        task.wait(3) -- small buffer
+        
+        -- safe to teleport
     end,
 })
 
