@@ -309,8 +309,7 @@ Divider:Set(true)
 local Section = Tab:CreateSection("Gems")
 Section:Set("Gems")
 
--- GEMS TOGGLE
-local Toggle = Tab:CreateToggle({
+Tab:CreateToggle({
     Name = "Auto Rob Gems",
     CurrentValue = false,
     Flag = "Toggle3",
@@ -349,6 +348,7 @@ local Toggle = Tab:CreateToggle({
 
                 local originalCFrame = lp.Character:GetPivot()
 
+                -- go to gem
                 lp.Character:PivotTo(prompt.Parent.CFrame)
                 task.wait(2)
 
@@ -359,6 +359,14 @@ local Toggle = Tab:CreateToggle({
                     task.wait()
                 end
 
+                -- IMPORTANT FIX: move off cash pad area before returning
+                if giver then
+                    local awayPos = giver.Position + Vector3.new(20, 20, 20)
+                    lp.Character:PivotTo(CFrame.new(awayPos))
+                    task.wait(0.5)
+                end
+
+                -- now return safely
                 lp.Character:PivotTo(originalCFrame)
                 task.wait(1)
             end
