@@ -267,7 +267,6 @@ Tab:CreateToggle({
     end,
 })
 
--- AUTO CASH
 Tab:CreateToggle({
     Name = "Auto Claim Cash",
     CurrentValue = false,
@@ -275,29 +274,38 @@ Tab:CreateToggle({
     Callback = function(Value)
         cashEnabled = Value
 
-        task.spawn(function()
-            while cashEnabled do
-                local startPos = char:GetPivot().Position
-                local goalPos = giver.Position
+        if cashEnabled then
+            task.spawn(function()
+                while cashEnabled do
+                    local startPos = char:GetPivot().Position
+                    local goalPos = giver.Position
 
-                local distance = (startPos - goalPos).Magnitude
-                local steps = math.clamp(distance / 2, 10, 100)
+                    local distance = (startPos - goalPos).Magnitude
+                    local steps = math.clamp(distance / 2, 10, 100)
 
-                for i = 1, steps do
+                    for i = 1, steps do
+                        if not cashEnabled then break end
+                        local pos = startPos:Lerp(goalPos, i / steps)
+                        char:PivotTo(CFrame.new(pos))
+                        task.wait()
+                    end
+
                     if not cashEnabled then break end
-                    local pos = startPos:Lerp(goalPos, i / steps)
-                    char:PivotTo(CFrame.new(pos))
-                    task.wait()
+
+                    firetouchinterest(giver, hrp, 0)
+                    firetouchinterest(giver, hrp, 1)
+
+                    task.wait(0.5)
                 end
-
-                if not cashEnabled then break end
-
-                firetouchinterest(giver, hrp, 0)
-                firetouchinterest(giver, hrp, 1)
-
-                task.wait(0.5)
-            end
-        end)
+            end)
+        else
+            -- ONLY runs when you disable
+            task.spawn(function()
+                task.wait(2) -- wait for last cash to finish
+                -- teleport here
+                print("Safe to teleport")
+            end)
+        end
     end,
 })
 
