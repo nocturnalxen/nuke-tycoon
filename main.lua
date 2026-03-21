@@ -101,6 +101,7 @@ local success, err = pcall(function()
 end)
 
 if not success then
+    warn(err)
     notify("Warning", "Some functions won't work because executor not supported")
 end
 
@@ -364,7 +365,11 @@ Tab:CreateToggle({
                     continue
                 end
 
-                task.wait(3)
+                if giver then
+                    local awayPos = giver.Position + Vector3.new(20, 0, 20)
+                    lp.Character:PivotTo(CFrame.new(awayPos))
+                    task.wait(0.5)
+                end
 
                 local originalCFrame = lp.Character:GetPivot()
 
@@ -377,13 +382,6 @@ Tab:CreateToggle({
                 while prompt.Parent:FindFirstChild("Chosen") and prompt.Parent.Chosen.Value == true do
                     if not gemsEnabled then break end
                     task.wait()
-                end
-
-                -- IMPORTANT FIX: move off cash pad area before returning
-                if giver then
-                    local awayPos = giver.Position + Vector3.new(20, 20, 20)
-                    lp.Character:PivotTo(CFrame.new(awayPos))
-                    task.wait(0.5)
                 end
 
                 -- now return safely
