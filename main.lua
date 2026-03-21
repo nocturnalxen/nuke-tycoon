@@ -10,6 +10,7 @@ local gemsEnabled = false
 local buyEnabled = false
 local cashEnabled = false
 local rebirthEnabled = false
+local blockFallDamage = false
 
 local g = getinfo or debug.getinfo
 local d = false
@@ -17,66 +18,92 @@ local h = {}
 
 local x, y
 
-setthreadidentity(2)
+local function notify(title, text)
+    StarterGui:SetCore("SendNotification", {
+        Title = title,
+        Text = text,
+        Duration = 3
+    })
+end
 
-for i, v in getgc(true) do
-    if typeof(v) == "table" then
-        local a = rawget(v, "Detected")
-        local b = rawget(v, "Kill")
-    
-        if typeof(a) == "function" and not x then
-            x = a
-            
-            local o; o = hookfunction(x, function(c, f, n)
-                if c ~= "_" then
+local success, err = pcall(function()
+    setthreadidentity(2)
+
+    for i, v in getgc(true) do
+        if typeof(v) == "table" then
+            local a = rawget(v, "Detected")
+            local b = rawget(v, "Kill")
+        
+            if typeof(a) == "function" and not x then
+                x = a
+                
+                local o; o = hookfunction(x, function(c, f, n)
+                    if c ~= "_" then
+                        if d then
+                            warn("idk")
+                        end
+                    end
+                    
+                    return true
+                end)
+
+                table.insert(h, x)
+            end
+
+            if rawget(v, "Variables") and rawget(v, "Process") and typeof(b) == "function" and not y then
+                y = b
+                local o; o = hookfunction(y, function(f)
                     if d then
                         warn("idk")
                     end
-                end
-                
-                return true
-            end)
+                end)
 
-            table.insert(h, x)
-        end
-
-        if rawget(v, "Variables") and rawget(v, "Process") and typeof(b) == "function" and not y then
-            y = b
-            local o; o = hookfunction(y, function(f)
-                if d then
-                    warn("idk")
-                end
-            end)
-
-            table.insert(h, y)
+                table.insert(h, y)
+            end
         end
     end
+
+    local o; o = hookfunction(getrenv().debug.info, newcclosure(function(...)
+        local a, f = ...
+
+        if x and a == x then
+            if d then
+                warn("idk")
+            end
+
+            return coroutine.yield(coroutine.running())
+        end
+        
+        return o(...)
+    end))
+
+    setthreadidentity(7)
+
+    local RF = game:GetService("ReplicatedStorage")
+        :WaitForChild("ACS_Engine")
+        :WaitForChild("Events")
+        :WaitForChild("Damage")
+
+    local mt = getrawmetatable(game)
+    local oldIndex = mt.__index
+    local oldNamecall = mt.__namecall
+
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+
+        if blockFallDamage and self == RF and method == "InvokeServer" then
+            return
+        end
+
+        return oldNamecall(self, ...)
+    end)
+end)
+
+if not success then
+    notify("Warning", "Some functions won't work because executor not supported")
 end
 
-local o; o = hookfunction(getrenv().debug.info, newcclosure(function(...)
-    local a, f = ...
-
-    if x and a == x then
-        if d then
-            warn("idk")
-        end
-
-        return coroutine.yield(coroutine.running())
-    end
-    
-    return o(...)
-end))
-
-setthreadidentity(7)
-
-local RF = game:GetService("ReplicatedStorage")
-    :WaitForChild("ACS_Engine")
-    :WaitForChild("Events")
-    :WaitForChild("Damage")
-
-local mt = getrawmetatable(game)
-local oldIndex = mt.__index
-local oldNamecall = mt.__namecall
 
 lp.CharacterAdded:Connect(function(newChar)
     char = newChar
@@ -134,13 +161,6 @@ local function startFly()
     end)
 end
 
-local function notify(title, text)
-    StarterGui:SetCore("SendNotification", {
-        Title = title,
-        Text = text,
-        Duration = 3
-    })
-end
 task.spawn(function()
     local ogCFrame = lp.Character:GetPivot()
     local middleCFrame = CFrame.new(-816.998291, 348.65094, 334.041504, 0.118985146, -7.769992e-9, -0.99289602, -2.8016989e-14, 1, -7.825587e-9, 0.99289602, 9.311565e-10, 0.118985146)
@@ -465,26 +485,11 @@ local Section = Tab3:CreateSection("Misc")
 Section:Set("Misc")
 
 local Toggle = Tab3:CreateToggle({
-    Name = "No Fall Damage",
+    Name = "No Fall Damage (Doesn't work on Xeno or Solara)",
     CurrentValue = false,
     Flag = "Toggle_BlockDamage",
     Callback = function(Value)
-        if Value then
-            setreadonly(mt, false)
-            mt.__namecall = newcclosure(function(self, ...)
-                local method = getnamecallmethod()
-                if self == RF and method == "InvokeServer" then
-                    return nil
-                end
-                return oldNamecall(self, ...)
-            end)
-            setreadonly(mt, true)
-        else
-            -- Restore it
-            setreadonly(mt, false)
-            mt.__namecall = oldNamecall
-            setreadonly(mt, true)
-        end
+        blockFallDamage = Value
     end,
 })
 
